@@ -17,8 +17,10 @@ import {
 import { SignUpValidation } from '@/lib/validation'
 import Loader from '@/components/shared/Loader'
 import { createUserAccount } from '@/lib/appwrite/api'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function SignUpForm() {
+  const { toast } = useToast()
   const isLoading = false
   // 1. Define your form.
   const form = useForm<z.infer<typeof SignUpValidation>>({
@@ -35,6 +37,12 @@ export default function SignUpForm() {
   async function onSubmit(values: z.infer<typeof SignUpValidation>) {
     const newUser = await createUserAccount(values)
     console.log('newUser', newUser)
+
+    if (!newUser)
+      return toast({
+        title: 'Sign Up Failed',
+        description: 'Something went wrong',
+      })
   }
   return (
     <Form {...form}>
