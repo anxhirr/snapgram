@@ -54,9 +54,20 @@ export async function signInAccount(user: { email: string; password: string }) {
     console.error(error)
   }
 }
-export async function getCurrentUser() {
+
+// ============================== GET ACCOUNT
+export async function getAccount() {
   try {
     const currentAccount = await account.get()
+    console.log(currentAccount)
+    return currentAccount
+  } catch (error) {
+    console.log(error)
+  }
+}
+export async function getCurrentUser() {
+  try {
+    const currentAccount = await getAccount()
     if (!currentAccount) throw new Error('No current account')
     const currentUser = await databases.listDocuments(
       appwriteConfig.databaseId,
