@@ -71,7 +71,7 @@ export default function PostForm({ action, post }: PostFormProps) {
         title: 'Success',
         description: 'Post updated successfully',
       })
-      navigate('/')
+      navigate(`/posts/${post.$id}`)
       return
     }
 
