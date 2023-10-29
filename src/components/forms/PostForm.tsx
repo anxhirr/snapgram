@@ -31,8 +31,7 @@ export default function PostForm({ post }: PostFormProps) {
   const { user } = useUserContext()
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { mutateAsync: createPost, isPending: isLoadingCreate } =
-    useCreatePost()
+  const { mutateAsync: createPost } = useCreatePost()
   // 1. Define your form.
   const form = useForm<z.infer<typeof PostValidation>>({
     resolver: zodResolver(PostValidation),

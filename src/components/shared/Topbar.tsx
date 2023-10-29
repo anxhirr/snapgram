@@ -33,7 +33,7 @@ export default function Topbar() {
           </Button>
           <Link to={`/profile/${user.id}`} className='flex-center gap-3'>
             <img
-              src={user.imageUrl || '/assets/images/profile-placeholder.svg'}
+              src={user.imageUrl || '/assets/icons/profile-placeholder.svg'}
               alt='profile'
               className='w-8 h-8 rounded-full'
             />
