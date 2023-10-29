@@ -334,3 +334,41 @@ export async function getPostById(postId: string) {
     console.error(error)
   }
 }
+
+export async function getInfinitePosts({ pageParam }: { pageParam: number }) {
+  const queries: any[] = [Query.orderDesc('$updatedAt'), Query.limit(10)]
+
+  if (pageParam) {
+    queries.push(Query.cursorAfter(pageParam.toString()))
+  }
+
+  try {
+    const posts = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      queries
+    )
+
+    if (!posts) throw new Error('No posts')
+
+    return posts
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function searchPosts(searchTerm: string) {
+  try {
+    const posts = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      [Query.search('caption', searchTerm)]
+    )
+
+    if (!posts) throw new Error('No posts')
+
+    return posts
+  } catch (error) {
+    console.error(error)
+  }
+}
