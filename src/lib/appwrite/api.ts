@@ -1,6 +1,6 @@
 import { ID, Query } from 'appwrite'
 
-import { INewPost, INewUser } from '@/types'
+import { INewPost, INewUser, IUpdatePost } from '@/types'
 import { account, appwriteConfig, avatars, databases, storage } from './config'
 
 export async function createUserAccount(user: INewUser) {
@@ -59,7 +59,6 @@ export async function signInAccount(user: { email: string; password: string }) {
 export async function getAccount() {
   try {
     const currentAccount = await account.get()
-    console.log(currentAccount)
     return currentAccount
   } catch (error) {
     console.log(error)
@@ -90,22 +89,22 @@ export async function signOutAccount() {
 }
 export async function createPost(post: INewPost) {
   try {
-    // uploadoad images to storage
+    // Upload file to appwrite storage
     const uploadedFile = await uploadFile(post.files[0])
-    if (!uploadedFile) throw new Error('No uploaded file')
 
-    // get file url
-    const fileUrl = await getFilePreview(uploadedFile.$id)
+    if (!uploadedFile) throw Error
+
+    // Get file url
+    const fileUrl = getFilePreview(uploadedFile.$id)
     if (!fileUrl) {
-      // delete file from storage
-      deleteFile(uploadedFile.$id)
-      throw new Error('No file url')
+      await deleteFile(uploadedFile.$id)
+      throw Error
     }
 
-    // convert tags to array
+    // Convert tags into array
     const tags = post.tags?.replace(/ /g, '').split(',') || []
 
-    // save post to db
+    // Create post
     const newPost = await databases.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.postsCollectionId,
@@ -113,20 +112,102 @@ export async function createPost(post: INewPost) {
       {
         creator: post.userId,
         caption: post.caption,
-        imageId: uploadedFile.$id,
         imageUrl: fileUrl,
+        imageId: uploadedFile.$id,
         location: post.location,
-        tags,
+        tags: tags,
       }
     )
 
     if (!newPost) {
-      // delete file from storage
       await deleteFile(uploadedFile.$id)
-      throw new Error('Post not created')
+      throw Error
     }
 
     return newPost
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+// ============================== UPDATE POST
+export async function updatePost(post: IUpdatePost) {
+  const hasFileToUpdate = post.files.length > 0
+
+  try {
+    let image = {
+      imageUrl: post.imageUrl,
+      imageId: post.imageId,
+    }
+
+    if (hasFileToUpdate) {
+      const uploadedFile = await uploadFile(post.files[0])
+      if (!uploadedFile) throw new Error('No uploaded file')
+
+      // Get new file url
+      const fileUrl = getFilePreview(uploadedFile.$id)
+      if (!fileUrl) {
+        await deleteFile(uploadedFile.$id)
+        throw Error
+      }
+
+      image = { ...image, imageUrl: fileUrl, imageId: uploadedFile.$id }
+    }
+
+    // Convert tags into array
+    const tags = post.tags?.replace(/ /g, '').split(',') || []
+
+    //  Update post
+    const updatedPost = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      post.postId,
+      {
+        caption: post.caption,
+        imageUrl: image.imageUrl,
+        imageId: image.imageId,
+        location: post.location,
+        tags: tags,
+      }
+    )
+
+    // Failed to update
+    if (!updatedPost) {
+      // Delete new file that has been recently uploaded
+      if (hasFileToUpdate) {
+        await deleteFile(image.imageId)
+      }
+
+      // If no new file uploaded, just throw error
+      throw Error
+    }
+
+    // Safely delete old file after successful update
+    if (hasFileToUpdate) {
+      await deleteFile(post.imageId)
+    }
+
+    return updatedPost
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export async function deletePost(postId: string, imageId: string) {
+  if (!postId || !imageId) throw new Error('No post id or image id')
+
+  try {
+    const statusCode = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      postId
+    )
+
+    if (!statusCode) throw new Error('Post not deleted')
+
+    await deleteFile(imageId)
+
+    return true
   } catch (error) {
     console.error(error)
   }
@@ -144,9 +225,9 @@ export async function uploadFile(file: File) {
     console.error(error)
   }
 }
-export async function getFilePreview(fileId: string) {
+export function getFilePreview(fileId: string) {
   try {
-    const filePreview = await storage.getFilePreview(
+    const filePreview = storage.getFilePreview(
       appwriteConfig.storageId,
       fileId,
       2000,
@@ -180,6 +261,75 @@ export const getRecentPosts = async () => {
     if (!recentPosts) throw new Error('No recent posts')
 
     return recentPosts
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function likePost(postId: string, likesArray: string[]) {
+  try {
+    const updatedPost = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      postId,
+      {
+        likes: likesArray,
+      }
+    )
+
+    if (!updatedPost) throw new Error('Post not updated')
+
+    return updatedPost
+  } catch (error) {
+    console.error(error)
+  }
+}
+export async function savePost(postId: string, userId: string) {
+  try {
+    const updatedPost = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.savesCollectionId,
+      ID.unique(),
+      {
+        user: userId,
+        post: postId,
+      }
+    )
+
+    if (!updatedPost) throw new Error('Post not updated')
+
+    return updatedPost
+  } catch (error) {
+    console.error(error)
+  }
+}
+export async function deleteSavedPost(savedRecordId: string) {
+  try {
+    const statusCode = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.savesCollectionId,
+      savedRecordId
+    )
+
+    if (!statusCode) throw new Error('Post not deleted')
+
+    return true
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+export async function getPostById(postId: string) {
+  try {
+    const post = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.postsCollectionId,
+      postId
+    )
+
+    if (!post) throw new Error('No post')
+
+    return post
   } catch (error) {
     console.error(error)
   }

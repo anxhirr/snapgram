@@ -12,7 +12,7 @@ export default function FileUploader({
   mediaUrl,
 }: FileUploaderProps) {
   const [files, setFiles] = useState<File[]>([])
-  const [fileUrl, setFileUrl] = useState<string>('')
+  const [fileUrl, setFileUrl] = useState<string>(mediaUrl)
 
   const onDrop = useCallback(
     (acceptedFiles: FileWithPath[]) => {

@@ -35,7 +35,7 @@ export type IUpdatePost = {
   caption: string
   imageId: string
   imageUrl: URL
-  file: File[]
+  files: File[]
   location?: string
   tags?: string
 }

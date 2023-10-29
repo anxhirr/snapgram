@@ -21,17 +21,25 @@ import { Models } from 'appwrite'
 import { useUserContext } from '@/context/AuthContext'
 import { useToast } from '../ui/use-toast'
 import { useNavigate } from 'react-router-dom'
-import { useCreatePost } from '@/lib/react-query/queriesAndMutations'
+import {
+  useCreatePost,
+  useUpdatePost,
+} from '@/lib/react-query/queriesAndMutations'
+import Loader from '../shared/Loader'
 
 type PostFormProps = {
   post?: Models.Document
+  action: 'create' | 'update'
 }
 
-export default function PostForm({ post }: PostFormProps) {
+export default function PostForm({ action, post }: PostFormProps) {
   const { user } = useUserContext()
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { mutateAsync: createPost } = useCreatePost()
+  const { mutateAsync: createPost, isPending: isCreatePostPending } =
+    useCreatePost()
+  const { mutateAsync: updatePost, isPending: isUpdatePostPending } =
+    useUpdatePost()
   // 1. Define your form.
   const form = useForm<z.infer<typeof PostValidation>>({
     resolver: zodResolver(PostValidation),
@@ -45,6 +53,28 @@ export default function PostForm({ post }: PostFormProps) {
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof PostValidation>) {
+    if (post && action === 'update') {
+      const updatedPost = await updatePost({
+        ...values,
+        postId: post.$id,
+        imageId: post.imageId,
+        imageUrl: post.imageUrl,
+      })
+      console.log('updatedPost', updatedPost)
+      if (!updatedPost)
+        return toast({
+          title: 'Error',
+          description: 'Something went wrong',
+        })
+
+      toast({
+        title: 'Success',
+        description: 'Post updated successfully',
+      })
+      navigate('/')
+      return
+    }
+
     const newPost = await createPost({
       ...values,
       userId: user.id,
@@ -62,7 +92,6 @@ export default function PostForm({ post }: PostFormProps) {
     })
     navigate('/')
   }
-  // ...
 
   return (
     <Form {...form}>
@@ -142,8 +171,11 @@ export default function PostForm({ post }: PostFormProps) {
           <Button
             type='submit'
             className='shad-button_primary whitespace-nowrap'
+            disabled={isCreatePostPending || isUpdatePostPending}
           >
-            Submit
+            {(isCreatePostPending || isUpdatePostPending) && <Loader />}
+
+            {action === 'create' ? 'Post' : 'Update'}
           </Button>
         </div>
       </form>
