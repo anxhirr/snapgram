@@ -22,3 +22,9 @@ export const SigninValidation = z.object({
     message: 'Minimum 8 characters are allowed',
   }),
 })
+export const PostValidation = z.object({
+  caption: z.string().min(2).max(100),
+  files: z.custom<File[]>(),
+  location: z.string().min(2).max(100),
+  tags: z.string(),
+})
